@@ -7,9 +7,11 @@ Hệ thống thị giác máy tính kết hợp suy luận logic dựa trên lu�
 ## 1. Điểm nổi bật & Kiến trúc hệ thống
 
 - **Mô hình Hybrid AI:** Kết hợp mô hình Deep Learning **YOLOv8** (phát hiện đối tượng `helmet`, `person`, `vest`, `boots`, `gloves`, `goggles`) và **Rule Engine** suy diễn tiến (Forward Chaining) hoàn toàn minh bạch (Explainable AI).
-- **Liên kết không gian hình học (Spatial & Geometric Association):**
-  - Tự động ước lượng vùng đầu (`HeadRegion`: 28% chiều cao phía trên, mở rộng 5%) và vùng thân áo (`TorsoRegion`: 22% - 68% chiều cao) của từng người.
-  - Tính toán độ bao phủ diện tích (`intersection_area / item_area >= 0.35`) để gán chính xác PPE cho từng người lao động độc quyền.
+- **Liên kết không gian hình học chống báo động giả (Spatial & Geometric Association):**
+  - Thu hẹp chiều ngang vùng đầu (`HeadRegion`: co 15% mỗi bên ngang, lấy từ `y1 - 0.08h` đến `y1 + 0.30h`) tránh nhận nhầm mũ người bên cạnh khi đám đông đứng sát nhau.
+  - Vùng thân áo (`TorsoRegion`: co 10% mỗi bên ngang, lấy từ `0.20h` đến `0.72h`).
+  - Liên kết kép **Point-in-Box + Intersection**: Gán `helmet` gần tâm đầu nhất; gộp mọi mảnh `vest` (áo phanh ngực sinh 2 box trái/phải) vào người tương ứng để triệt tiêu box vest dư thừa.
+- **Kiểm soát Fallback Rule nghiêm ngặt:** Trước khi suy luận `InferredPersonFromVest`, kiểm tra tâm vest có nằm trong hoặc cách mép dưới 15px của bất kỳ `person` nào không; nếu có thì bỏ qua hoàn toàn, chỉ tạo người ảo khi vest nằm ở không gian độc lập thực sự.
 - **Cơ chế chống trùng lặp đa khung hình (NMS Anti-Duplication):** Tích hợp thuật toán NMS lọc kép (IoU = 0.45), tự động triệt tiêu các khung người trùng lặp khi người đứng gần nhau hoặc khi hạ độ nhạy mô hình.
 - **Bảo vệ cấu hình trực quan:** Giao diện Web được khóa cố định ở bộ thông số chuẩn hóa tối ưu (`conf_ppe=0.25`, `conf_person=0.35`, `iou_threshold=0.45`), người dùng phổ thông không thể can thiệp sai. Các kỹ sư muốn tinh chỉnh sâu có thể sử dụng trực tiếp qua giao diện Swagger API (`/docs`).
 - **Tập luật suy diễn ưu tiên (Ruleset):**

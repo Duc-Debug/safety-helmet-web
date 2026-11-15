@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Set
 import math
 from .schemas import DetectedObject, WorkerEvaluation, SummaryMetrics
 
@@ -20,16 +20,27 @@ class SafetyRuleEngine:
     để phân loại rủi ro và đánh giá tuân thủ trang bị bảo hộ cá nhân (PPE).
     """
 
-    HELMET_HEAD_THRESHOLD: float = 0.35
-    VEST_TORSO_THRESHOLD: float = 0.35
+    HELMET_HEAD_RATIO_THRESHOLD: float = 0.30
+    VEST_TORSO_RATIO_THRESHOLD: float = 0.25
     INFERRED_HELMET_HEAD_THRESHOLD: float = 0.30
     CLIPPED_BORDER_PIXELS: float = 5.0
+    PERSON_BOTTOM_MARGIN_PIXELS: float = 15.0
 
     @staticmethod
-    def calculate_intersection_coverage(item_bbox: List[float], target_region: List[float]) -> float:
+    def get_box_center(box: List[float]) -> Tuple[float, float]:
+        """Tính tọa độ tâm (cx, cy) của bounding box."""
+        return (box[0] + box[2]) / 2.0, (box[1] + box[3]) / 2.0
+
+    @staticmethod
+    def is_point_inside_box(px: float, py: float, box: List[float], bottom_margin: float = 0.0) -> bool:
+        """Kiểm tra một điểm (px, py) có nằm trong bounding box (có thể mở rộng nhẹ mép dưới) hay không."""
+        return (box[0] <= px <= box[2]) and (box[1] <= py <= box[3] + bottom_margin)
+
+    @staticmethod
+    def compute_intersection_ratio(item_bbox: List[float], target_region: List[float]) -> float:
         """Tính tỉ lệ phần diện tích của item nằm lọt bên trong target region.
 
-        coverage = intersection_area / item_area
+        ratio = intersection_area / item_area
         """
         ix1 = max(item_bbox[0], target_region[0])
         iy1 = max(item_bbox[1], target_region[1])
@@ -49,29 +60,41 @@ class SafetyRuleEngine:
 
         return intersection_area / item_area
 
+    # Giữ alias cho calculate_intersection_coverage để tương thích
+    calculate_intersection_coverage = compute_intersection_ratio
+
     @classmethod
-    def estimate_person_regions(cls, bbox: List[float], img_h: Optional[float] = None) -> Tuple[List[float], List[float]]:
+    def estimate_head_and_torso(cls, bbox: List[float], img_h: Optional[float] = None) -> Tuple[List[float], List[float]]:
         """Ước tính vùng đầu (HeadRegion) và vùng thân áo (TorsoRegion) từ khung người.
 
-        - HeadRegion: 28% chiều cao trên cùng của person, mở rộng nhẹ 5% lên phía trên để bao trọn mũ.
-        - TorsoRegion: từ 22% đến 68% chiều cao của person.
+        - Thu hẹp chiều ngang vùng đầu để tránh nhận nhầm mũ của người đứng sát bên cạnh:
+          head_bbox = [x1 + 0.15 * w, max(0.0, y1 - 0.08 * h), x2 - 0.15 * w, y1 + 0.30 * h]
+        - torso_bbox = [x1 + 0.10 * w, y1 + 0.20 * h, x2 - 0.10 * w, y1 + 0.72 * h]
         """
         x1, y1, x2, y2 = bbox
+        w = max(0.0, x2 - x1)
         h = max(0.0, y2 - y1)
 
-        head_y1 = max(0.0, y1 - 0.05 * h)
-        head_y2 = y1 + 0.28 * h
-        head_bbox = [x1, head_y1, x2, head_y2]
+        head_x1 = x1 + 0.15 * w
+        head_y1 = max(0.0, y1 - 0.08 * h)
+        head_x2 = x2 - 0.15 * w
+        head_y2 = y1 + 0.30 * h
+        head_bbox = [head_x1, head_y1, head_x2, head_y2]
 
-        torso_y1 = y1 + 0.22 * h
-        torso_y2 = y1 + 0.68 * h
-        torso_bbox = [x1, torso_y1, x2, torso_y2]
+        torso_x1 = x1 + 0.10 * w
+        torso_y1 = y1 + 0.20 * h
+        torso_x2 = x2 - 0.10 * w
+        torso_y2 = y1 + 0.72 * h
+        torso_bbox = [torso_x1, torso_y1, torso_x2, torso_y2]
 
         return head_bbox, torso_bbox
 
+    # Alias tương thích ngược
+    estimate_person_regions = estimate_head_and_torso
+
     @classmethod
     def infer_person_from_vest(cls, vest_bbox: List[float], img_w: Optional[float] = None, img_h: Optional[float] = None) -> Tuple[List[float], List[float]]:
-        """Nội suy khung người và vùng đầu giả định từ chiếc áo bảo hộ khi detector bỏ sót person.
+        """Nội suy khung người và vùng đầu giả định từ chiếc áo bảo hộ độc lập khi detector bỏ sót person.
 
         Vest thông thường chiếm ~46% chiều cao cơ thể người.
         """
@@ -111,10 +134,9 @@ class SafetyRuleEngine:
         vests = [d for d in detections if d.cls_name == 'vest']
 
         # Dữ liệu chuẩn bị cho từng người
-        # worker_candidates: list of dict(type, bbox, head_bbox, torso_bbox, obj_id)
         worker_candidates: List[Dict] = []
         for idx, p in enumerate(persons):
-            head_box, torso_box = self.estimate_person_regions(p.bbox, img_h)
+            head_box, torso_box = self.estimate_head_and_torso(p.bbox, img_h)
             worker_candidates.append({
                 "worker_id": f"Worker_{idx + 1:02d}",
                 "is_inferred": False,
@@ -123,67 +145,108 @@ class SafetyRuleEngine:
                 "torso_bbox": torso_box,
                 "associated_helmet": None,
                 "associated_vest": None,
+                "has_vest": False,
                 "source_obj_id": p.obj_id
             })
 
-        # 1. Liên kết Vest với TorsoRegion của Persons (Đảm bảo 1 vest chỉ gán tối đa 1 người)
-        vest_matches: List[Tuple[float, int, int]] = []  # (coverage, candidate_idx, vest_idx)
+        used_vests: Set[int] = set()
+        used_helmets: Set[int] = set()
+
+        # -------------------------------------------------------------
+        # BƯỚC 1: LIÊN KẾT VEST & HELMET VỚI PERSON PHÁT HIỆN
+        # -------------------------------------------------------------
+
+        # 1.1. Liên kết Vest với Person (Point-in-Box + Intersection)
+        # Tất cả các vest có tâm nằm trong person_bbox HOẶC ratio >= 0.25 với torso_bbox
+        # đều được gán cho người đó và thêm vào used_vests (tránh áo phanh ngực sinh 2 box)
         for c_idx, cand in enumerate(worker_candidates):
             for v_idx, vest in enumerate(vests):
-                cov = self.calculate_intersection_coverage(vest.bbox, cand["torso_bbox"])
-                if cov >= self.VEST_TORSO_THRESHOLD:
-                    vest_matches.append((cov, c_idx, v_idx))
+                vx, vy = self.get_box_center(vest.bbox)
+                is_center_in_person = self.is_point_inside_box(vx, vy, cand["person_bbox"])
+                inter_ratio = self.compute_intersection_ratio(vest.bbox, cand["torso_bbox"])
 
-        # Sắp xếp giảm dần theo độ bao phủ để ưu tiên ghép tốt nhất
-        vest_matches.sort(key=lambda x: x[0], reverse=True)
-        assigned_candidates_vest = set()
-        assigned_vests = set()
+                if is_center_in_person or inter_ratio >= self.VEST_TORSO_RATIO_THRESHOLD:
+                    cand["has_vest"] = True
+                    if cand["associated_vest"] is None:
+                        cand["associated_vest"] = vest
+                    used_vests.add(v_idx)
 
-        for cov, c_idx, v_idx in vest_matches:
-            if c_idx not in assigned_candidates_vest and v_idx not in assigned_vests:
-                worker_candidates[c_idx]["associated_vest"] = vests[v_idx]
-                assigned_candidates_vest.add(c_idx)
-                assigned_vests.add(v_idx)
-
-        # 2. Liên kết Helmet với HeadRegion của Persons (Đảm bảo 1 helmet chỉ gán tối đa 1 người)
-        helmet_matches: List[Tuple[float, int, int]] = []
+        # 1.2. Liên kết Helmet với Person (Point-in-Box + Intersection + Chọn gần tâm nhất)
+        # Một helmet khớp nếu tâm (hx, hy) nằm trong head_bbox HOẶC ratio >= 0.30
+        helmet_match_candidates: List[Tuple[float, int, int]] = []  # (distance, cand_idx, helmet_idx)
         for c_idx, cand in enumerate(worker_candidates):
+            head_cx, head_cy = self.get_box_center(cand["head_bbox"])
             for h_idx, helmet in enumerate(helmets):
-                h_cov = self.calculate_intersection_coverage(helmet.bbox, cand["head_bbox"])
-                if h_cov >= self.HELMET_HEAD_THRESHOLD:
-                    helmet_matches.append((h_cov, c_idx, h_idx))
+                hx, hy = self.get_box_center(helmet.bbox)
+                is_center_in_head = self.is_point_inside_box(hx, hy, cand["head_bbox"])
+                inter_ratio = self.compute_intersection_ratio(helmet.bbox, cand["head_bbox"])
 
-        helmet_matches.sort(key=lambda x: x[0], reverse=True)
-        assigned_candidates_helmet = set()
-        assigned_helmets = set()
+                if is_center_in_head or inter_ratio >= self.HELMET_HEAD_RATIO_THRESHOLD:
+                    # Khoảng cách từ tâm helmet đến tâm vùng đầu
+                    dist = math.hypot(hx - head_cx, hy - head_cy)
+                    helmet_match_candidates.append((dist, c_idx, h_idx))
 
-        for cov, c_idx, h_idx in helmet_matches:
-            if c_idx not in assigned_candidates_helmet and h_idx not in assigned_helmets:
+        # Sắp xếp tăng dần theo khoảng cách để ưu tiên helmet gần tâm đầu nhất
+        helmet_match_candidates.sort(key=lambda x: x[0])
+        assigned_candidates_helmet: Set[int] = set()
+
+        for dist, c_idx, h_idx in helmet_match_candidates:
+            if c_idx not in assigned_candidates_helmet and h_idx not in used_helmets:
                 worker_candidates[c_idx]["associated_helmet"] = helmets[h_idx]
                 assigned_candidates_helmet.add(c_idx)
-                assigned_helmets.add(h_idx)
+                used_helmets.add(h_idx)
 
-        # 3. Fallback Rule: Xử lý các vest chưa được gán (detector bỏ sót khung person)
-        unassigned_vests = [v for idx, v in enumerate(vests) if idx not in assigned_vests]
-        for v in unassigned_vests:
-            inferred_p_box, inferred_h_box = self.infer_person_from_vest(v.bbox, img_w, img_h)
-            
-            # Tìm helmet chưa được gán có coverage >= 0.30 với vùng đầu nội suy
+        # -------------------------------------------------------------
+        # BƯỚC 2: KIỂM SOÁT CHẶT CHẼ FALLBACK RULE (InferredPersonFromVest)
+        # -------------------------------------------------------------
+        # Trước khi tạo InferredPersonFromVest từ vest chưa dùng, kiểm tra xem tâm vest
+        # có nằm trong (hoặc sát mép dưới 15px) bất kỳ person_bbox nào đã tồn tại không.
+        # Nếu có -> BỎ QUA HOÀN TOÀN (coi như vest thuộc về người đã có nhưng bị lệch).
+        for v_idx, vest in enumerate(vests):
+            if v_idx in used_vests:
+                continue
+
+            vx, vy = self.get_box_center(vest.bbox)
+
+            # Kiểm tra xem vest có thuộc về bất kỳ person nào đã phát hiện không
+            is_inside_existing_person = False
+            for p in persons:
+                if self.is_point_inside_box(vx, vy, p.bbox, bottom_margin=self.PERSON_BOTTOM_MARGIN_PIXELS):
+                    is_inside_existing_person = True
+                    break
+
+            if is_inside_existing_person:
+                # Bỏ qua hoàn toàn, đánh dấu đã xử lý để không tạo người ảo
+                used_vests.add(v_idx)
+                continue
+
+            # Chỉ tạo InferredPersonFromVest khi chiếc vest thực sự nằm ở không gian độc lập
+            inferred_p_box, inferred_h_box = self.infer_person_from_vest(vest.bbox, img_w, img_h)
+            head_cx, head_cy = self.get_box_center(inferred_h_box)
+
+            # Tìm helmet chưa dùng gần tâm vùng đầu nội suy nhất
             best_helmet = None
-            best_cov = -1.0
+            best_dist = float('inf')
             best_h_idx = -1
 
             for h_idx, helmet in enumerate(helmets):
-                if h_idx in assigned_helmets:
+                if h_idx in used_helmets:
                     continue
-                cov = self.calculate_intersection_coverage(helmet.bbox, inferred_h_box)
-                if cov >= self.INFERRED_HELMET_HEAD_THRESHOLD and cov > best_cov:
-                    best_cov = cov
-                    best_helmet = helmet
-                    best_h_idx = h_idx
+                hx, hy = self.get_box_center(helmet.bbox)
+                is_center_in_head = self.is_point_inside_box(hx, hy, inferred_h_box)
+                inter_ratio = self.compute_intersection_ratio(helmet.bbox, inferred_h_box)
+
+                if is_center_in_head or inter_ratio >= self.INFERRED_HELMET_HEAD_THRESHOLD:
+                    dist = math.hypot(hx - head_cx, hy - head_cy)
+                    if dist < best_dist:
+                        best_dist = dist
+                        best_helmet = helmet
+                        best_h_idx = h_idx
 
             if best_helmet is not None and best_h_idx >= 0:
-                assigned_helmets.add(best_h_idx)
+                used_helmets.add(best_h_idx)
+
+            used_vests.add(v_idx)
 
             worker_id = f"Worker_{len(worker_candidates) + 1:02d}"
             worker_candidates.append({
@@ -191,13 +254,16 @@ class SafetyRuleEngine:
                 "is_inferred": True,
                 "person_bbox": inferred_p_box,
                 "head_bbox": inferred_h_box,
-                "torso_bbox": v.bbox,
+                "torso_bbox": vest.bbox,
                 "associated_helmet": best_helmet,
-                "associated_vest": v,
-                "source_obj_id": v.obj_id
+                "associated_vest": vest,
+                "has_vest": True,
+                "source_obj_id": vest.obj_id
             })
 
-        # 4. Áp dụng Fact Base & Rule Base cho từng worker
+        # -------------------------------------------------------------
+        # BƯỚC 3: ÁP DỤNG FACT BASE & RULE BASE CHO TỪNG WORKER
+        # -------------------------------------------------------------
         evaluations: List[WorkerEvaluation] = []
         for cand in worker_candidates:
             facts: List[str] = []
@@ -217,7 +283,7 @@ class SafetyRuleEngine:
 
             # Fact: Liên kết bảo hộ
             has_helmet = cand["associated_helmet"] is not None
-            has_vest = cand["associated_vest"] is not None
+            has_vest = cand["has_vest"] or (cand["associated_vest"] is not None)
 
             if has_helmet:
                 facts.append("HelmetAssociated")
@@ -266,7 +332,6 @@ class SafetyRuleEngine:
                     risk_level = "NGUY HIỂM CAO"
                     explanation = "VI PHẠM NGHIÊM TRỌNG (Suy luận từ áo): Phát hiện người mặc áo bảo hộ nhưng vùng đầu phía trên KHÔNG CÓ MŨ."
             else:
-                # Fallback an toàn (tránh trường hợp ngoại lai không khớp)
                 rule_id = "R05"
                 status = "INSUFFICIENT_EVIDENCE"
                 risk_level = "KHÔNG ĐỦ BẰNG CHỨNG"
@@ -283,7 +348,9 @@ class SafetyRuleEngine:
                 explanation=explanation
             ))
 
-        # 5. Tính toán SummaryMetrics
+        # -------------------------------------------------------------
+        # BƯỚC 4: TÍNH TOÁN SUMMARY METRICS
+        # -------------------------------------------------------------
         total_workers = len(evaluations)
         insufficient_ev = sum(1 for e in evaluations if e.status == "INSUFFICIENT_EVIDENCE")
         valid_evaluated = total_workers - insufficient_ev
