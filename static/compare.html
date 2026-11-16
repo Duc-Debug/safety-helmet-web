@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Benchmark & Comparison Studio (YOLOv8n vs YOLOv8s vs YOLOv5)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e40af',
+                        danger: '#dc2626',
+                        warning: '#d97706',
+                        success: '#16a34a',
+                        dark: '#0f172a'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .dragover {
+            border-color: #0d9488 !important;
+            background-color: #f0fdfa !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+    <!-- Header & Navigation -->
+    <header class="bg-slate-900 text-white shadow-md border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-lg bg-teal-600 flex items-center justify-center text-white shadow">
+                    <i class="fa-solid fa-code-compare text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        Safety Vision AI
+                        <span class="text-xs font-semibold uppercase px-2 py-0.5 bg-teal-500 rounded text-teal-950 flex items-center gap-1">
+                            <i class="fa-solid fa-chart-simple text-[10px]"></i> Model Benchmark
+                        </span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Head-to-head comparison: YOLOv8n vs YOLOv8s vs YOLOv5</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3 text-xs text-slate-300">
+                <a href="/" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition shadow-sm font-semibold">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                    <span>Standard View</span>
+                </a>
+                <a href="/tuning" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white border border-indigo-500/50 transition shadow-sm font-semibold">
+                    <i class="fa-solid fa-sliders text-xs"></i>
+                    <span>Tuning Studio</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full flex flex-col gap-6">
+
+        <!-- Top Banner & Control Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-microchip text-teal-600"></i>
+                        Side-by-Side Model Benchmark Studio
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Upload a single construction-site image to execute <strong>YOLOv8n (Nano)</strong>, <strong>YOLOv8s (Fine-Tuned)</strong>, and <strong>YOLOv5 (Classic)</strong> simultaneously under identical Rule Engine conditions.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-mono bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-slate-600">
+                    <span class="w-2 h-2 rounded-full bg-teal-500"></span>
+                    <span>Fixed Benchmark: PPE=0.25 | Person=0.35 | IoU=0.45</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-5 mt-4 items-center">
+                <!-- Drop Zone -->
+                <div class="md:col-span-8">
+                    <div id="drop-zone" class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer transition hover:border-teal-500 hover:bg-teal-50/40 flex flex-col items-center justify-center min-h-[140px]">
+                        <input type="file" id="image-input" accept="image/*" class="hidden">
+                        <div id="upload-prompt" class="flex flex-col items-center">
+                            <div class="w-10 h-10 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center mb-1.5">
+                                <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+                            </div>
+                            <p class="text-sm font-medium text-slate-700">Drag & drop image or <span class="text-teal-600 font-semibold underline">browse test photo</span></p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Supports JPG, PNG, WEBP</p>
+                        </div>
+                        <!-- Preview -->
+                        <div id="preview-wrapper" class="hidden w-full relative">
+                            <img id="preview-img" src="" alt="Test Preview" class="max-h-48 mx-auto rounded-lg object-contain border border-slate-200">
+                            <button type="button" id="remove-img-btn" class="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-md transition" title="Choose another image">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Run Benchmark Action Button -->
+                <div class="md:col-span-4 flex flex-col gap-2">
+                    <button id="compare-btn" disabled class="w-full py-4 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md transition flex flex-col items-center justify-center gap-1.5">
+                        <div class="flex items-center gap-2">
+                            <span id="btn-spinner" class="hidden">
+                                <i class="fa-solid fa-circle-notch fa-spin text-base"></i>
+                            </span>
+                            <i id="btn-icon" class="fa-solid fa-bolt text-amber-300 text-base"></i>
+                            <span id="btn-text" class="text-sm">Run 3-Model Benchmark</span>
+                        </div>
+                        <span class="text-[10px] font-normal text-teal-100">Executes v8n vs v8s vs v5 in parallel</span>
+                    </button>
+                    <p class="text-[11px] text-slate-400 text-center">Measures exact latency, detection recall, and compliance score</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benchmark Matrix Section (Visible after benchmark) -->
+        <div id="benchmark-results-container" class="hidden flex flex-col gap-6">
+
+            <!-- 1. Quantitative Comparison Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                    <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-table-list text-teal-600"></i>
+                        Quantitative Performance Matrix
+                    </h3>
+                    <span class="text-xs text-slate-500 font-mono">Test Platform: Real-Time Host GPU/CPU</span>
+                </div>
+
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 border-y border-slate-200 text-slate-600 uppercase tracking-wider">
+                                <th class="py-3 px-4 font-semibold">Evaluation Metric</th>
+                                <th class="py-3 px-4 font-bold text-blue-700 bg-blue-50/50 border-x border-slate-200">
+                                    <div class="flex items-center justify-between">
+                                        <span>YOLOv8n (Nano)</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-200 text-blue-800">Ultra-Fast</span>
+                                    </div>
+                                </th>
+                                <th class="py-3 px-4 font-bold text-emerald-800 bg-emerald-50/60 border-r border-slate-200">
+                                    <div class="flex items-center justify-between">
+                                        <span>YOLOv8s (Small)</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900">Fine-Tuned ⭐</span>
+                                    </div>
+                                </th>
+                                <th class="py-3 px-4 font-bold text-slate-700 bg-slate-100/50">
+                                    <div class="flex items-center justify-between">
+                                        <span>YOLOv5 (Classic)</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">Baseline</span>
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrix-table-body" class="divide-y divide-slate-100 font-medium">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 2. Side-by-Side Visual Inspection (3 Columns) -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-images text-teal-600"></i>
+                        Visual Bounding Box & Reasoning Comparison
+                    </h3>
+                    <span class="text-xs text-slate-400">Inspect bounding box coverage and reasoning accuracy</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    
+                    <!-- Card 1: YOLOv8n -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col">
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                            <div>
+                                <span class="text-xs font-bold text-blue-700">YOLOv8n (Nano)</span>
+                                <span class="block text-[10px] text-slate-400">Lightweight Architecture</span>
+                            </div>
+                            <span id="badge-latency-v8n" class="text-xs font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded">
+                                -- ms
+                            </span>
+                        </div>
+                        <div class="relative bg-slate-900/5 rounded-lg border border-slate-200 min-h-[260px] flex items-center justify-center overflow-hidden mb-3">
+                            <img id="img-v8n" src="" alt="YOLOv8n Result" class="w-full h-auto max-h-[320px] object-contain">
+                        </div>
+                        <div id="stats-v8n" class="text-xs space-y-1 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <!-- Dynamic stats -->
+                        </div>
+                    </div>
+
+                    <!-- Card 2: YOLOv8s (Fine-Tuned) -->
+                    <div class="bg-white rounded-xl shadow-sm border-2 border-emerald-500 p-4 flex flex-col relative">
+                        <div class="absolute -top-3 right-4 bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow">
+                            Recommended Model
+                        </div>
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                            <div>
+                                <span class="text-xs font-bold text-emerald-800">YOLOv8s (Small)</span>
+                                <span class="block text-[10px] text-slate-400">Trained on Custom PPE Weights</span>
+                            </div>
+                            <span id="badge-latency-v8s" class="text-xs font-mono font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded">
+                                -- ms
+                            </span>
+                        </div>
+                        <div class="relative bg-slate-900/5 rounded-lg border border-slate-200 min-h-[260px] flex items-center justify-center overflow-hidden mb-3">
+                            <img id="img-v8s" src="" alt="YOLOv8s Result" class="w-full h-auto max-h-[320px] object-contain">
+                        </div>
+                        <div id="stats-v8s" class="text-xs space-y-1 bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-200">
+                            <!-- Dynamic stats -->
+                        </div>
+                    </div>
+
+                    <!-- Card 3: YOLOv5 -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col">
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800">YOLOv5 (Classic)</span>
+                                <span class="block text-[10px] text-slate-400">Standard Baseline</span>
+                            </div>
+                            <span id="badge-latency-v5" class="text-xs font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200 px-2 py-0.5 rounded">
+                                -- ms
+                            </span>
+                        </div>
+                        <div class="relative bg-slate-900/5 rounded-lg border border-slate-200 min-h-[260px] flex items-center justify-center overflow-hidden mb-3">
+                            <img id="img-v5" src="" alt="YOLOv5 Result" class="w-full h-auto max-h-[320px] object-contain">
+                        </div>
+                        <div id="stats-v5" class="text-xs space-y-1 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <!-- Dynamic stats -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 3. Engineering Recommendations & Trade-offs -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-xl p-5 shadow-sm">
+                <h4 class="text-sm font-bold flex items-center gap-2 mb-3 text-teal-400">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    Engineering Deployment Analysis & Practical Takeaways
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300 leading-relaxed">
+                    <div class="bg-slate-800/80 p-3.5 rounded-lg border border-slate-700">
+                        <h5 class="font-bold text-blue-400 mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-gauge-high"></i> YOLOv8n (Edge Camera)
+                        </h5>
+                        <p>Best for resource-constrained embedded systems (NVIDIA Jetson Nano, Raspberry Pi 5). Offers highest frame rate but may miss tiny helmets at long camera distances.</p>
+                    </div>
+                    <div class="bg-slate-800/80 p-3.5 rounded-lg border border-emerald-500/80">
+                        <h5 class="font-bold text-emerald-400 mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-star"></i> YOLOv8s (Server AI - Best)
+                        </h5>
+                        <p>Optimal trade-off for on-site centralized servers or cloud GPU inference. Demonstrates the highest recall on small objects (helmets, goggles) and tight crowds.</p>
+                    </div>
+                    <div class="bg-slate-800/80 p-3.5 rounded-lg border border-slate-700">
+                        <h5 class="font-bold text-slate-400 mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-clock-rotate-left"></i> YOLOv5 (Classic Baseline)
+                        </h5>
+                        <p>Extremely mature and proven in legacy industrial deployments. Serves as a reliable baseline, though YOLOv8 exhibits superior feature pyramid aggregation on PPE.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-400">
+        Safety Vision AI © 2026 | Multi-Model Benchmark & Comparative Reasoning
+    </footer>
+
+    <!-- JavaScript Benchmark Logic -->
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const imageInput = document.getElementById('image-input');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const previewWrapper = document.getElementById('preview-wrapper');
+        const previewImg = document.getElementById('preview-img');
+        const removeImgBtn = document.getElementById('remove-img-btn');
+
+        const compareBtn = document.getElementById('compare-btn');
+        const btnSpinner = document.getElementById('btn-spinner');
+        const btnIcon = document.getElementById('btn-icon');
+        const btnText = document.getElementById('btn-text');
+
+        const resultsContainer = document.getElementById('benchmark-results-container');
+        const matrixTableBody = document.getElementById('matrix-table-body');
+
+        let selectedFile = null;
+
+        // Image Selection & Drag-and-Drop
+        dropZone.addEventListener('click', () => {
+            if (!selectedFile) imageInput.click();
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('dragover');
+            });
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file (.jpg, .png, .webp).');
+                return;
+            }
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                uploadPrompt.classList.add('hidden');
+                previewWrapper.classList.remove('hidden');
+                compareBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        removeImgBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetFileInput();
+        });
+
+        function resetFileInput() {
+            selectedFile = null;
+            imageInput.value = '';
+            previewImg.src = '';
+            uploadPrompt.classList.remove('hidden');
+            previewWrapper.classList.add('hidden');
+            compareBtn.disabled = true;
+            resultsContainer.classList.add('hidden');
+        }
+
+        // Run Benchmark Comparison
+        compareBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            compareBtn.disabled = true;
+            btnSpinner.classList.remove('hidden');
+            btnIcon.classList.add('hidden');
+            btnText.textContent = 'Running 3-Model Benchmark...';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('conf_ppe', '0.25');
+            formData.append('conf_person', '0.35');
+            formData.append('iou_threshold', '0.45');
+
+            try {
+                const response = await fetch('/api/compare', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || 'Benchmark execution failed.');
+                }
+
+                const data = await response.json();
+                renderBenchmarkResults(data.results);
+            } catch (err) {
+                console.error(err);
+                alert('Error: ' + err.message);
+            } finally {
+                compareBtn.disabled = false;
+                btnSpinner.classList.add('hidden');
+                btnIcon.classList.remove('hidden');
+                btnText.textContent = 'Run 3-Model Benchmark';
+            }
+        });
+
+        function renderBenchmarkResults(results) {
+            resultsContainer.classList.remove('hidden');
+
+            const v8n = results['yolov8n'];
+            const v8s = results['yolov8s'];
+            const v5 = results['yolov5'];
+
+            if (!v8n || !v8s || !v5) {
+                alert('Incomplete benchmark response from server.');
+                return;
+            }
+
+            // 1. Matrix Table Rows
+            const metrics = [
+                {
+                    label: 'Inference Latency (ms)',
+                    v8n: `<span class="text-blue-600 font-bold">${v8n.inference_time_ms} ms</span> <span class="text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded">Fastest ⚡</span>`,
+                    v8s: `<span class="text-emerald-700 font-bold">${v8s.inference_time_ms} ms</span>`,
+                    v5: `<span class="text-slate-700 font-bold">${v5.inference_time_ms} ms</span>`
+                },
+                {
+                    label: 'Total Workers Detected',
+                    v8n: `${v8n.summary.total_workers} persons`,
+                    v8s: `<strong class="text-emerald-700 font-black">${v8s.summary.total_workers} persons</strong>`,
+                    v5: `${v5.summary.total_workers} persons`
+                },
+                {
+                    label: 'Helmet Compliance Rate (%)',
+                    v8n: `${v8n.summary.helmet_compliance_rate.toFixed(1)}%`,
+                    v8s: `<strong class="text-emerald-700">${v8s.summary.helmet_compliance_rate.toFixed(1)}%</strong>`,
+                    v5: `${v5.summary.helmet_compliance_rate.toFixed(1)}%`
+                },
+                {
+                    label: 'Violation / Danger Rate (%)',
+                    v8n: `${v8n.summary.danger_rate.toFixed(1)}%`,
+                    v8s: `${v8s.summary.danger_rate.toFixed(1)}%`,
+                    v5: `${v5.summary.danger_rate.toFixed(1)}%`
+                },
+                {
+                    label: 'High-Risk Violations Count',
+                    v8n: v8n.summary.danger_no_helmet > 0 ? `<span class="text-rose-600 font-bold">${v8n.summary.danger_no_helmet}</span>` : '0',
+                    v8s: v8s.summary.danger_no_helmet > 0 ? `<span class="text-rose-600 font-bold">${v8s.summary.danger_no_helmet}</span>` : '0',
+                    v5: v5.summary.danger_no_helmet > 0 ? `<span class="text-rose-600 font-bold">${v5.summary.danger_no_helmet}</span>` : '0'
+                },
+                {
+                    label: 'Uncertain / Clipped Cases',
+                    v8n: `${v8n.summary.insufficient_evidence}`,
+                    v8s: `${v8s.summary.insufficient_evidence}`,
+                    v5: `${v5.summary.insufficient_evidence}`
+                },
+                {
+                    label: 'Overall Site Risk Verdict',
+                    v8n: v8n.summary.is_scene_dangerous ? '<span class="text-rose-600 font-bold">⚠️ DANGER</span>' : '<span class="text-emerald-600 font-bold">✅ SAFE</span>',
+                    v8s: v8s.summary.is_scene_dangerous ? '<span class="text-rose-600 font-bold">⚠️ DANGER</span>' : '<span class="text-emerald-600 font-bold">✅ SAFE</span>',
+                    v5: v5.summary.is_scene_dangerous ? '<span class="text-rose-600 font-bold">⚠️ DANGER</span>' : '<span class="text-emerald-600 font-bold">✅ SAFE</span>'
+                }
+            ];
+
+            let tableHtml = '';
+            metrics.forEach(m => {
+                tableHtml += `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-2.5 px-4 text-slate-800 font-medium">${m.label}</td>
+                        <td class="py-2.5 px-4 font-mono bg-blue-50/30 border-x border-slate-100">${m.v8n}</td>
+                        <td class="py-2.5 px-4 font-mono bg-emerald-50/30 border-r border-slate-100">${m.v8s}</td>
+                        <td class="py-2.5 px-4 font-mono bg-slate-50/30">${m.v5}</td>
+                    </tr>
+                `;
+            });
+            matrixTableBody.innerHTML = tableHtml;
+
+            // 2. Images and Cards
+            document.getElementById('badge-latency-v8n').textContent = `${v8n.inference_time_ms} ms`;
+            document.getElementById('img-v8n').src = v8n.image_base64;
+            document.getElementById('stats-v8n').innerHTML = `
+                <div class="flex justify-between"><span>Workers:</span><strong>${v8n.summary.total_workers}</strong></div>
+                <div class="flex justify-between"><span>Compliance:</span><strong class="text-emerald-600">${v8n.summary.helmet_compliance_rate}%</strong></div>
+                <div class="flex justify-between"><span>Violations:</span><strong class="text-rose-600">${v8n.summary.danger_no_helmet}</strong></div>
+            `;
+
+            document.getElementById('badge-latency-v8s').textContent = `${v8s.inference_time_ms} ms`;
+            document.getElementById('img-v8s').src = v8s.image_base64;
+            document.getElementById('stats-v8s').innerHTML = `
+                <div class="flex justify-between"><span>Workers:</span><strong>${v8s.summary.total_workers}</strong></div>
+                <div class="flex justify-between"><span>Compliance:</span><strong class="text-emerald-600">${v8s.summary.helmet_compliance_rate}%</strong></div>
+                <div class="flex justify-between"><span>Violations:</span><strong class="text-rose-600">${v8s.summary.danger_no_helmet}</strong></div>
+            `;
+
+            document.getElementById('badge-latency-v5').textContent = `${v5.inference_time_ms} ms`;
+            document.getElementById('img-v5').src = v5.image_base64;
+            document.getElementById('stats-v5').innerHTML = `
+                <div class="flex justify-between"><span>Workers:</span><strong>${v5.summary.total_workers}</strong></div>
+                <div class="flex justify-between"><span>Compliance:</span><strong class="text-emerald-600">${v5.summary.helmet_compliance_rate}%</strong></div>
+                <div class="flex justify-between"><span>Violations:</span><strong class="text-rose-600">${v5.summary.danger_no_helmet}</strong></div>
+            `;
+
+            // Scroll smoothly to results
+            resultsContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

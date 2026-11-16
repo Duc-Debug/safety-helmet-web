@@ -43,8 +43,9 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Sau khi máy chủ khởi động thành công:
-- **Giao diện Tiêu chuẩn (Vận hành chuẩn hóa - Khóa chỉnh thanh trượt):** [http://localhost:8000](http://localhost:8000)
-- **Giao diện Tinh chỉnh chuyên sâu (Tuning Lab với đầy đủ Sliders):** [http://localhost:8000/tuning](http://localhost:8000/tuning)
+- **Giao diện Tiêu chuẩn (Standard View - Tinh gọn, chọn mô hình YOLOv8s / YOLOv8n / YOLOv5):** [http://localhost:8000](http://localhost:8000)
+- **Giao diện So sánh đa mô hình (Model Benchmark Studio - Chạy song song v8n vs v8s vs v5):** [http://localhost:8000/compare](http://localhost:8000/compare)
+- **Giao diện Tinh chỉnh chuyên sâu (Tuning Studio với đầy đủ Sliders):** [http://localhost:8000/tuning](http://localhost:8000/tuning)
 - **Tài liệu tương tác API Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
@@ -60,8 +61,13 @@ safety-helmet-web/
 ├── static/
 │   └── index.html            # Giao diện Web Tiếng Việt (TailwindCSS, KPI, Banner cảnh báo, Rule Trace)
 ├── weights/
-│   └── best.pt               # Trọng số YOLOv8 đã fine-tune (tự động fallback yolov8n.pt nếu thiếu)
-├── main.py                   # FastAPI app, API /api/analyze, OpenCV Visualizer & Base64 encoder
+│   ├── yolov8s/
+│   │   └── best.pt           # Trọng số YOLOv8s fine-tuned (có sẵn)
+│   ├── yolov8n/
+│   │   └── README.md         # Thư mục để đặt trọng số YOLOv8n (best.pt)
+│   └── yolov5/
+│       └── README.md         # Thư mục để đặt trọng số YOLOv5 (best.pt)
+├── main.py                   # FastAPI app, Multi-Model Pipeline, OpenCV Visualizer & Base64 encoder
 ├── requirements.txt          # Danh sách thư viện phụ thuộc
 └── README.md                 # Tài liệu hướng dẫn sử dụng
 ```

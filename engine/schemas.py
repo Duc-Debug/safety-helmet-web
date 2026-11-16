@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 
 
@@ -18,7 +18,7 @@ class WorkerEvaluation(BaseModel):
     head_bbox: List[float] = Field(..., description="Tọa độ ước tính vùng đầu [x1, y1, x2, y2]")
     facts: List[str] = Field(default_factory=list, description="Danh sách các sự kiện đã kiểm chứng")
     status: str = Field(..., description="Mã trạng thái quy tắc (COMPLIANT, DANGER_NO_HELMET, ...)")
-    risk_level: str = Field(..., description="Mức độ rủi ro (AN TOÀN, NGUY HIỂM CAO, ...)")
+    risk_level: str = Field(..., description="Mức độ rủi ro (SAFE, WARNING, HIGH RISK, UNCERTAIN)")
     rule_id: str = Field(..., description="Mã luật áp dụng (R01, R02, R03, R04, R05)")
     explanation: str = Field(..., description="Giải thích kết quả suy luận logic")
 
@@ -40,3 +40,20 @@ class AnalysisResponse(BaseModel):
     summary: SummaryMetrics
     evaluations: List[WorkerEvaluation]
     image_base64: str
+    model_used: Optional[str] = Field("yolov8s", description="Mô hình được sử dụng")
+    inference_time_ms: Optional[float] = Field(0.0, description="Thời gian suy luận mô hình (mili-giây)")
+
+
+class ModelBenchmarkResult(BaseModel):
+    """Kết quả chi tiết cho một mô hình trong bài kiểm tra so sánh."""
+    model_key: str = Field(..., description="Mã mô hình (yolov8n, yolov8s, yolov5)")
+    model_title: str = Field(..., description="Tên hiển thị của mô hình")
+    inference_time_ms: float = Field(..., description="Thời gian suy luận (ms)")
+    summary: SummaryMetrics
+    evaluations: List[WorkerEvaluation]
+    image_base64: str
+
+
+class ComparisonResponse(BaseModel):
+    """Phản hồi so sánh đa mô hình (YOLOv8n vs YOLOv8s vs YOLOv5)."""
+    results: Dict[str, ModelBenchmarkResult]

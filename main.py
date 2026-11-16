@@ -1,8 +1,9 @@
 import os
 import io
+import time
 import base64
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from contextlib import asynccontextmanager
 
 import cv2
@@ -18,6 +19,8 @@ from engine.schemas import (
     WorkerEvaluation,
     SummaryMetrics,
     AnalysisResponse,
+    ModelBenchmarkResult,
+    ComparisonResponse,
 )
 from engine.rule_engine import SafetyRuleEngine, CLASS_NAMES
 
@@ -28,34 +31,86 @@ logging.basicConfig(
 )
 logger = logging.getLogger("safety-helmet-service")
 
-# Đường dẫn model và thư mục
-WEIGHTS_PATH = os.path.join("weights", "best.pt")
-FALLBACK_MODEL_NAME = "yolov8n.pt"
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
-# Khởi tạo instance và state
-model: YOLO = None
+# Cấu hình 3 kiến trúc mô hình (YOLOv8n, YOLOv8s, YOLOv5) theo 3 thư mục riêng biệt
+AVAILABLE_MODELS = {
+    "yolov8s": {
+        "title": "YOLOv8s (Fine-Tuned Small)",
+        "paths": [
+            os.path.join("weights", "yolov8s", "best.pt"),
+            os.path.join("weights", "yolov8s", "yolov8s.pt"),
+            os.path.join("weights", "best.pt"),
+        ],
+        "fallback": "yolov8s.pt",
+        "description": "High accuracy on small PPE items, balanced speed"
+    },
+    "yolov8n": {
+        "title": "YOLOv8n (Ultra-Fast Nano)",
+        "paths": [
+            os.path.join("weights", "yolov8n", "best.pt"),
+            os.path.join("weights", "yolov8n", "yolov8n.pt"),
+            os.path.join("weights", "yolov8n.pt"),
+        ],
+        "fallback": "yolov8n.pt",
+        "description": "Lightweight model, fastest edge camera inference"
+    },
+    "yolov5": {
+        "title": "YOLOv5 (Classic Baseline)",
+        "paths": [
+            os.path.join("weights", "yolov5", "best.pt"),
+            os.path.join("weights", "yolov5", "yolov5s.pt"),
+            os.path.join("weights", "yolov5", "yolov5.pt"),
+            os.path.join("weights", "yolov5s.pt"),
+        ],
+        "fallback": "yolov5su.pt",
+        "description": "Standard industrial benchmark architecture"
+    }
+}
+
+# Cache mô hình đã nạp vào bộ nhớ RAM
+LOADED_MODELS: Dict[str, YOLO] = {}
 rule_engine = SafetyRuleEngine()
+
+
+def get_yolo_model(model_key: str = "yolov8s") -> Tuple[YOLO, str]:
+    """Lấy mô hình YOLO từ cache RAM hoặc nạp mới từ các thư mục weights tương ứng."""
+    key = model_key.lower().strip()
+    if key not in AVAILABLE_MODELS:
+        key = "yolov8s"
+
+    if key in LOADED_MODELS:
+        return LOADED_MODELS[key], key
+
+    cfg = AVAILABLE_MODELS[key]
+
+    # Quét qua danh sách các file ứng viên trong thư mục weights/<model_key>/
+    for candidate_path in cfg.get("paths", []):
+        if os.path.exists(candidate_path):
+            logger.info(f"Loading model '{key}' from disk: {candidate_path}")
+            try:
+                m = YOLO(candidate_path)
+                LOADED_MODELS[key] = m
+                logger.info(f"Loaded '{key}' successfully from {candidate_path}")
+                return m, key
+            except Exception as e:
+                logger.error(f"Error loading {candidate_path}: {e}")
+
+    # Fallback nếu chưa có file đặt trong thư mục
+    logger.info(f"No custom local file found for '{key}'. Loading via fallback: {cfg['fallback']}")
+    m = YOLO(cfg["fallback"])
+    LOADED_MODELS[key] = m
+    return m, key
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Quản lý vòng đời ứng dụng FastAPI: tải trọng số mô hình khi khởi động."""
-    global model
-    if os.path.exists(WEIGHTS_PATH):
-        logger.info(f"Đang tải trọng số chuyên dụng từ: {WEIGHTS_PATH}")
-        try:
-            model = YOLO(WEIGHTS_PATH)
-            logger.info("Tải trọng số best.pt thành công!")
-        except Exception as e:
-            logger.error(f"Lỗi khi tải {WEIGHTS_PATH}: {e}. Chuyển sang fallback model.")
-            model = YOLO(FALLBACK_MODEL_NAME)
-    else:
-        logger.warning(
-            f"CẢNH BÁO: Không tìm thấy file {WEIGHTS_PATH}! "
-            f"Hệ thống tự động fallback sang mô hình tiêu chuẩn '{FALLBACK_MODEL_NAME}'."
-        )
-        model = YOLO(FALLBACK_MODEL_NAME)
+    """Quản lý vòng đời ứng dụng FastAPI: tiền nạp mô hình chính (YOLOv8s) khi khởi động."""
+    logger.info("Khởi động hệ thống Safety Helmet Vision...")
+    try:
+        get_yolo_model("yolov8s")
+    except Exception as e:
+        logger.warning(f"Chưa thể tiền nạp yolov8s khi khởi động: {e}. Sẽ nạp on-demand khi có request.")
     yield
     logger.info("Ứng dụng đang dừng hoạt động...")
 
@@ -63,7 +118,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Safety Helmet Detection & Rule-Based Reasoning API",
     description="Hệ thống nhận diện mũ bảo hộ và trang bị PPE kết hợp lập luận suy diễn luật",
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan
 )
 
@@ -76,27 +131,75 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Đảm bảo thư mục static tồn tại trước khi mount
+# Mount thư mục static
 os.makedirs(STATIC_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
-@app.get("/", summary="Trang chủ giao diện người dùng")
+@app.get("/", summary="Standard User View")
 async def serve_index():
-    """Phục vụ file giao diện web chính static/index.html (Chế độ tiêu chuẩn đã khóa tinh chỉnh)."""
+    """Phục vụ file giao diện web chính static/index.html (Chế độ tiêu chuẩn đã thu gọn)."""
     index_file = os.path.join(STATIC_DIR, "index.html")
     if not os.path.exists(index_file):
-        raise HTTPException(status_code=404, detail="File static/index.html chưa được tạo.")
+        raise HTTPException(status_code=404, detail="File static/index.html not found.")
     return FileResponse(index_file)
 
 
-@app.get("/tuning", summary="Trang giao diện tinh chỉnh tham số chuyên sâu")
+@app.get("/tuning", summary="Advanced Tuning Studio")
 async def serve_tuning():
-    """Phục vụ file giao diện tinh chỉnh riêng biệt static/tuning.html cho kỹ sư và chuyên gia."""
+    """Phục vụ file giao diện tinh chỉnh tham số chuyên sâu static/tuning.html."""
     tuning_file = os.path.join(STATIC_DIR, "tuning.html")
     if not os.path.exists(tuning_file):
-        raise HTTPException(status_code=404, detail="File static/tuning.html chưa được tạo.")
+        raise HTTPException(status_code=404, detail="File static/tuning.html not found.")
     return FileResponse(tuning_file)
+
+
+@app.get("/compare", summary="Model Benchmark & Comparison Page")
+async def serve_compare():
+    """Phục vụ file giao diện so sánh trực quan đa mô hình static/compare.html."""
+    compare_file = os.path.join(STATIC_DIR, "compare.html")
+    if not os.path.exists(compare_file):
+        raise HTTPException(status_code=404, detail="File static/compare.html not found.")
+    return FileResponse(compare_file)
+
+
+def filter_duplicate_boxes(boxes: List[DetectedObject], iou_thresh: float = 0.45) -> List[DetectedObject]:
+    """Khử các bounding box bị trùng lặp (Non-Maximum Suppression) cho cùng một người."""
+    persons = [b for b in boxes if b.cls_name == "person"]
+    others = [b for b in boxes if b.cls_name != "person"]
+
+    if not persons:
+        return boxes
+
+    # Sắp xếp person theo conf giảm dần
+    persons.sort(key=lambda x: x.conf, reverse=True)
+    kept_persons: List[DetectedObject] = []
+
+    for p in persons:
+        is_duplicate = False
+        for kp in kept_persons:
+            ix1 = max(p.bbox[0], kp.bbox[0])
+            iy1 = max(p.bbox[1], kp.bbox[1])
+            ix2 = min(p.bbox[2], kp.bbox[2])
+            iy2 = min(p.bbox[3], kp.bbox[3])
+
+            inter_w = max(0.0, ix2 - ix1)
+            inter_h = max(0.0, iy2 - iy1)
+            inter_area = inter_w * inter_h
+
+            area1 = max(0.0, (p.bbox[2] - p.bbox[0]) * (p.bbox[3] - p.bbox[1]))
+            area2 = max(0.0, (kp.bbox[2] - kp.bbox[0]) * (kp.bbox[3] - kp.bbox[1]))
+            union_area = area1 + area2 - inter_area
+
+            iou = (inter_area / union_area) if union_area > 0 else 0.0
+            if iou > iou_thresh:
+                is_duplicate = True
+                break
+
+        if not is_duplicate:
+            kept_persons.append(p)
+
+    return kept_persons + others
 
 
 def draw_visualizations(
@@ -108,7 +211,6 @@ def draw_visualizations(
     annotated = image.copy()
     img_h, img_w = annotated.shape[:2]
 
-    # Bảng màu cho trạng thái công nhân (BGR)
     STATUS_COLORS: Dict[str, tuple] = {
         "COMPLIANT": (0, 200, 0),             # Xanh lá
         "WARNING_NO_VEST": (0, 165, 255),      # Cam
@@ -116,8 +218,8 @@ def draw_visualizations(
         "INSUFFICIENT_EVIDENCE": (160, 160, 160)  # Xám
     }
 
-    # 1. Vẽ các vật thể PPE nhỏ (helmet, vest, boots, gloves, goggles) bằng viền mảnh màu vàng nhạt
-    ppe_color = (0, 220, 255)  # Vàng chanh BGR
+    # 1. Vẽ các vật thể PPE nhỏ (helmet, vest, boots, gloves, goggles)
+    ppe_color = (0, 220, 255)
     for det in detections:
         if det.cls_name != "person":
             bx1, by1, bx2, by2 = [int(v) for v in det.bbox]
@@ -147,22 +249,18 @@ def draw_visualizations(
         color = STATUS_COLORS.get(ev.status, (120, 120, 120))
         px1, py1, px2, py2 = [int(v) for v in ev.person_bbox]
 
-        # Giới hạn trong kích thước ảnh
         px1, py1 = max(0, px1), max(0, py1)
         px2, py2 = min(img_w - 1, px2), min(img_h - 1, py2)
 
-        # Vẽ khung công nhân dày
         cv2.rectangle(annotated, (px1, py1), (px2, py2), color, 3, cv2.LINE_AA)
 
-        # Vẽ vùng đầu ước lượng bằng viền đứt nét mờ để hiển thị logic kiểm tra
         hx1, hy1, hx2, hy2 = [int(v) for v in ev.head_bbox]
         hx1, hy1 = max(0, hx1), max(0, hy1)
         hx2, hy2 = min(img_w - 1, hx2), min(img_h - 1, hy2)
         cv2.rectangle(annotated, (hx1, hy1), (hx2, hy2), color, 1, cv2.LINE_4)
 
-        # Nhãn thông tin suy luận: Worker_ID [Rule_ID] - Risk
         tag_text = f"{ev.worker_id} [{ev.rule_id}] {ev.risk_level}"
-        font_scale = 0.55
+        font_scale = 0.52
         thickness = 1
         (txt_w, txt_h), baseline = cv2.getTextSize(tag_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
 
@@ -188,90 +286,24 @@ def draw_visualizations(
     return annotated
 
 
-def filter_duplicate_boxes(boxes: List[DetectedObject], iou_thresh: float = 0.45) -> List[DetectedObject]:
-    """Khử các bounding box bị trùng lặp (Non-Maximum Suppression) cho cùng một người."""
-    persons = [b for b in boxes if b.cls_name == "person"]
-    others = [b for b in boxes if b.cls_name != "person"]
-
-    if not persons:
-        return boxes
-
-    # Sắp xếp person theo conf giảm dần
-    persons.sort(key=lambda x: x.conf, reverse=True)
-    kept_persons: List[DetectedObject] = []
-
-    for p in persons:
-        is_duplicate = False
-        for kp in kept_persons:
-            # Tính IoU giữa p và kp
-            ix1 = max(p.bbox[0], kp.bbox[0])
-            iy1 = max(p.bbox[1], kp.bbox[1])
-            ix2 = min(p.bbox[2], kp.bbox[2])
-            iy2 = min(p.bbox[3], kp.bbox[3])
-
-            inter_w = max(0.0, ix2 - ix1)
-            inter_h = max(0.0, iy2 - iy1)
-            inter_area = inter_w * inter_h
-
-            area1 = max(0.0, (p.bbox[2] - p.bbox[0]) * (p.bbox[3] - p.bbox[1]))
-            area2 = max(0.0, (kp.bbox[2] - kp.bbox[0]) * (kp.bbox[3] - kp.bbox[1]))
-            union_area = area1 + area2 - inter_area
-
-            iou = (inter_area / union_area) if union_area > 0 else 0.0
-            if iou > iou_thresh:
-                is_duplicate = True
-                break
-
-        if not is_duplicate:
-            kept_persons.append(p)
-
-    return kept_persons + others
-
-
-@app.post("/api/analyze", response_model=AnalysisResponse, summary="Analyze image and perform safety rule reasoning")
-async def analyze_image(
-    file: UploadFile = File(..., description="Image to analyze (.jpg, .jpeg, .png, .webp)"),
-    conf_ppe: float = Form(0.25, ge=0.01, le=1.0, description="Confidence threshold for PPE gear (Adjustable via API)"),
-    conf_person: float = Form(0.35, ge=0.01, le=1.0, description="Confidence threshold for person (Adjustable via API, default 0.35)"),
-    iou_threshold: float = Form(0.45, ge=0.01, le=1.0, description="IoU threshold for Non-Maximum Suppression (NMS)")
-):
-    """Analyze uploaded site image, run YOLOv8 object detection, and trigger the Rule Reasoning Engine."""
-    global model
-    if model is None:
-        raise HTTPException(status_code=500, detail="YOLO model is not initialized.")
-
-    # Validate image file type
-    allowed_content_types = ["image/jpeg", "image/png", "image/webp", "image/bmp"]
-    if file.content_type not in allowed_content_types and not any(file.filename.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]):
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded file is not a valid image format (.jpg, .jpeg, .png, .webp, .bmp)"
-        )
-
-    # Decode image in memory
-    try:
-        contents = await file.read()
-        nparr = np.frombuffer(contents, np.uint8)
-        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if image is None:
-            raise ValueError("Failed to decode image data.")
-    except Exception as e:
-        logger.error(f"Error reading image file: {e}")
-        raise HTTPException(status_code=400, detail=f"Cannot process uploaded image: {str(e)}")
-
+def run_pipeline(
+    image: np.ndarray,
+    yolo_model: YOLO,
+    conf_ppe: float,
+    conf_person: float,
+    iou_thresh: float
+) -> Tuple[SummaryMetrics, List[WorkerEvaluation], str, float]:
+    """Chạy toàn bộ pipeline từ YOLO inference -> Rule Engine -> Visualization."""
     img_h, img_w = image.shape[:2]
-
-    # Chạy inference mô hình YOLO với NMS iou_threshold
     min_conf = min(conf_ppe, conf_person)
-    try:
-        results = model.predict(source=image, conf=min_conf, iou=iou_threshold, verbose=False)
-    except Exception as e:
-        logger.error(f"Lỗi inference YOLO: {e}")
-        raise HTTPException(status_code=500, detail=f"Lỗi trong quá trình chạy mô hình AI: {str(e)}")
 
-    # Trích xuất và phân loại đối tượng phát hiện
+    # Đo thời gian suy luận AI
+    start_t = time.perf_counter()
+    results = yolo_model.predict(source=image, conf=min_conf, iou=iou_thresh, verbose=False)
+    inference_time_ms = round((time.perf_counter() - start_t) * 1000, 1)
+
     raw_detections: List[DetectedObject] = []
-    names = getattr(model, "names", CLASS_NAMES)
+    names = getattr(yolo_model, "names", CLASS_NAMES)
 
     if results and len(results) > 0:
         boxes = results[0].boxes
@@ -281,10 +313,8 @@ async def analyze_image(
                 conf = float(box.conf[0].item())
                 xyxy = box.xyxy[0].tolist()
 
-                # Tên class ánh xạ theo model hoặc dictionary mặc định
                 cls_name = names.get(cls_id, CLASS_NAMES.get(cls_id, f"class_{cls_id}")).lower()
 
-                # Lọc theo ngưỡng riêng biệt
                 if cls_name == "person":
                     if conf < conf_person:
                         continue
@@ -300,27 +330,117 @@ async def analyze_image(
                     bbox=[round(float(c), 2) for c in xyxy]
                 ))
 
-    # Áp dụng NMS phụ trợ độc quyền cho Person để triệt tiêu hoàn toàn khung người đè nhau
-    detections = filter_duplicate_boxes(raw_detections, iou_thresh=iou_threshold)
+    # NMS phụ trợ khử trùng lặp người
+    detections = filter_duplicate_boxes(raw_detections, iou_thresh=iou_thresh)
 
     # Kích hoạt Rule Engine
     evaluations, summary = rule_engine.evaluate(detections, img_w=img_w, img_h=img_h)
 
-    # Vẽ bounding box và nhãn suy luận lên ảnh
+    # Vẽ bounding boxes
     annotated_img = draw_visualizations(image, detections, evaluations)
 
-    # Mã hóa ảnh kết quả sang định dạng Base64
-    success, buffer = cv2.imencode(".jpg", annotated_img, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+    # Encode Base64
+    success, buffer = cv2.imencode(".jpg", annotated_img, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
     if not success:
-        raise HTTPException(status_code=500, detail="Không thể mã hóa ảnh kết quả thành JPEG.")
+        raise HTTPException(status_code=500, detail="Cannot encode resulting image to JPEG.")
 
     b64_string = f"data:image/jpeg;base64,{base64.b64encode(buffer).decode('utf-8')}"
+    return summary, evaluations, b64_string, inference_time_ms
+
+
+@app.post("/api/analyze", response_model=AnalysisResponse, summary="Analyze image and perform safety rule reasoning")
+async def analyze_image(
+    file: UploadFile = File(..., description="Image to analyze (.jpg, .jpeg, .png, .webp)"),
+    model_type: str = Form("yolov8s", description="Selected model architecture: yolov8s, yolov8n, yolov5"),
+    conf_ppe: float = Form(0.25, ge=0.01, le=1.0, description="Confidence threshold for PPE gear"),
+    conf_person: float = Form(0.35, ge=0.01, le=1.0, description="Confidence threshold for person"),
+    iou_threshold: float = Form(0.45, ge=0.01, le=1.0, description="IoU threshold for Non-Maximum Suppression (NMS)")
+):
+    """Phân tích ảnh với kiến trúc mô hình được chọn (YOLOv8s, YOLOv8n, hoặc YOLOv5)."""
+    # Kiểm tra định dạng file
+    allowed_content_types = ["image/jpeg", "image/png", "image/webp", "image/bmp"]
+    if file.content_type not in allowed_content_types and not any(file.filename.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]):
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is not a valid image format (.jpg, .jpeg, .png, .webp, .bmp)"
+        )
+
+    try:
+        contents = await file.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError("Failed to decode image data.")
+    except Exception as e:
+        logger.error(f"Error reading image file: {e}")
+        raise HTTPException(status_code=400, detail=f"Cannot process uploaded image: {str(e)}")
+
+    selected_model, active_key = get_yolo_model(model_type)
+    summary, evaluations, b64_string, latency_ms = run_pipeline(
+        image, selected_model, conf_ppe, conf_person, iou_threshold
+    )
 
     return AnalysisResponse(
         summary=summary,
         evaluations=evaluations,
-        image_base64=b64_string
+        image_base64=b64_string,
+        model_used=active_key,
+        inference_time_ms=latency_ms
     )
+
+
+@app.post("/api/compare", response_model=ComparisonResponse, summary="Run benchmark comparison on all 3 models")
+async def compare_models(
+    file: UploadFile = File(..., description="Image to benchmark (.jpg, .jpeg, .png, .webp)"),
+    conf_ppe: float = Form(0.25, ge=0.01, le=1.0),
+    conf_person: float = Form(0.35, ge=0.01, le=1.0),
+    iou_threshold: float = Form(0.45, ge=0.01, le=1.0)
+):
+    """Chạy đồng thời cả 3 kiến trúc mô hình (YOLOv8n, YOLOv8s, YOLOv5) trên cùng 1 ảnh để so sánh."""
+    allowed_content_types = ["image/jpeg", "image/png", "image/webp", "image/bmp"]
+    if file.content_type not in allowed_content_types and not any(file.filename.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]):
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is not a valid image format (.jpg, .jpeg, .png, .webp, .bmp)"
+        )
+
+    try:
+        contents = await file.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError("Failed to decode image data.")
+    except Exception as e:
+        logger.error(f"Error reading image file: {e}")
+        raise HTTPException(status_code=400, detail=f"Cannot process uploaded image: {str(e)}")
+
+    benchmark_results: Dict[str, ModelBenchmarkResult] = {}
+    target_models = ["yolov8n", "yolov8s", "yolov5"]
+
+    for m_key in target_models:
+        try:
+            m_obj, resolved_key = get_yolo_model(m_key)
+            summary, evaluations, b64_str, latency = run_pipeline(
+                image, m_obj, conf_ppe, conf_person, iou_threshold
+            )
+            title = AVAILABLE_MODELS.get(m_key, {}).get("title", m_key.upper())
+            benchmark_results[m_key] = ModelBenchmarkResult(
+                model_key=m_key,
+                model_title=title,
+                inference_time_ms=latency,
+                summary=summary,
+                evaluations=evaluations,
+                image_base64=b64_str
+            )
+        except Exception as e:
+            logger.error(f"Error benchmarking model {m_key}: {e}")
+            # Fallback nếu 1 model gặp trục trặc
+            continue
+
+    if not benchmark_results:
+        raise HTTPException(status_code=500, detail="Failed to run comparison on models.")
+
+    return ComparisonResponse(results=benchmark_results)
 
 
 if __name__ == "__main__":
