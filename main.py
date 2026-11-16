@@ -23,6 +23,7 @@ from engine.schemas import (
     ComparisonResponse,
 )
 from engine.rule_engine import SafetyRuleEngine, CLASS_NAMES
+from engine.yolov5_wrapper import YOLOv5Wrapper
 
 # Cấu hình logging
 logging.basicConfig(
@@ -89,7 +90,14 @@ def get_yolo_model(model_key: str = "yolov8s") -> Tuple[YOLO, str]:
         if os.path.exists(candidate_path):
             logger.info(f"Loading model '{key}' from disk: {candidate_path}")
             try:
-                m = YOLO(candidate_path)
+                if key == "yolov5":
+                    try:
+                        m = YOLO(candidate_path)
+                    except Exception as yolo_err:
+                        logger.info(f"YOLOv8 engine không tải được checkpoint YOLOv5 ({yolo_err}). Chuyển sang YOLOv5Wrapper...")
+                        m = YOLOv5Wrapper(candidate_path)
+                else:
+                    m = YOLO(candidate_path)
                 LOADED_MODELS[key] = m
                 logger.info(f"Loaded '{key}' successfully from {candidate_path}")
                 return m, key

@@ -1,0 +1,28 @@
+======================================================
+GÓI MÔ HÌNH NHẬN DIỆN ĐỒ BẢO HỘ PPE (YOLOV5)
+======================================================
+
+1. CÁC TỆP TRONG GÓI:
+- best.pt: Trọng số mô hình tối ưu nhất sau khi huấn luyện (mAP50: 47.7%).
+- data.yaml: Danh sách 6 nhãn đối tượng (0: boots, 1: gloves, 2: goggles, 3: helmet, 4: person, 5: vest).
+- results.png: Biểu đồ biến thiên độ mất mát (Loss) và mAP qua 50 epochs.
+- confusion_matrix.png: Ma trận nhầm lẫn chứng minh độ chính xác từng lớp.
+
+2. CÁCH CHẠY NHẬN DIỆN VỚI REPO YOLOV5:
+Chạy lệnh sau trên Terminal (đặt file best.pt cùng thư mục yolov5 hoặc trỏ đúng đường dẫn):
+python detect.py --weights best.pt --source <duong_dan_anh_hoac_video> --img 640 --conf 0.4
+
+3. CÁCH DÙNG TRỰC TIẾP TRONG CODE PYTHON (Không cần clone repo YOLOv5):
+```python
+import torch
+
+# Tải mô hình
+model = torch.hub.load('ultralytics/yolov5', 'custom', path='best.pt')
+
+# Nhận diện trên ảnh bất kỳ
+results = model('anh_cua_ban.jpg')
+
+# Hiển thị hoặc lưu ảnh kết quả
+results.show()
+results.save()
+```

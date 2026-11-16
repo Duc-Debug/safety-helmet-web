@@ -1,0 +1,15 @@
+# YOLOv5 Dataset Configuration for PPE Detection
+path: C:/Users/ASUS/Downloads/ppe_v1_clean_bbox
+train: train/images
+val: test/images
+test: test/images
+
+# Classes
+nc: 6
+names:
+  0: boots
+  1: gloves
+  2: goggles
+  3: helmet
+  4: person
+  5: vest
