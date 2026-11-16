@@ -228,39 +228,36 @@ def filter_duplicate_boxes(boxes: List[DetectedObject], iou_thresh: float = 0.45
     return kept_persons + others
 
 
-@app.post("/api/analyze", response_model=AnalysisResponse, summary="Phân tích ảnh và suy luận luật an toàn")
+@app.post("/api/analyze", response_model=AnalysisResponse, summary="Analyze image and perform safety rule reasoning")
 async def analyze_image(
-    file: UploadFile = File(..., description="Ảnh cần phân tích (.jpg, .jpeg, .png, .webp)"),
-    conf_ppe: float = Form(0.25, ge=0.01, le=1.0, description="Ngưỡng tin cậy cho trang bị PPE (Tùy chỉnh qua API)"),
-    conf_person: float = Form(0.35, ge=0.01, le=1.0, description="Ngưỡng tin cậy cho người (Tùy chỉnh qua API, mặc định 0.35)"),
-    iou_threshold: float = Form(0.45, ge=0.01, le=1.0, description="Ngưỡng IoU Non-Maximum Suppression chống trùng lặp khung hình")
+    file: UploadFile = File(..., description="Image to analyze (.jpg, .jpeg, .png, .webp)"),
+    conf_ppe: float = Form(0.25, ge=0.01, le=1.0, description="Confidence threshold for PPE gear (Adjustable via API)"),
+    conf_person: float = Form(0.35, ge=0.01, le=1.0, description="Confidence threshold for person (Adjustable via API, default 0.35)"),
+    iou_threshold: float = Form(0.45, ge=0.01, le=1.0, description="IoU threshold for Non-Maximum Suppression (NMS)")
 ):
-    """Endpoint tiếp nhận ảnh, thực hiện YOLO inference và kích hoạt Rule Engine.
-    
-    Các tham số conf_ppe, conf_person và iou_threshold được mở cho các kỹ sư kiểm thử qua API/Swagger Docs.
-    """
+    """Analyze uploaded site image, run YOLOv8 object detection, and trigger the Rule Reasoning Engine."""
     global model
     if model is None:
-        raise HTTPException(status_code=500, detail="Mô hình YOLO chưa sẵn sàng.")
+        raise HTTPException(status_code=500, detail="YOLO model is not initialized.")
 
-    # Kiểm tra định dạng file
+    # Validate image file type
     allowed_content_types = ["image/jpeg", "image/png", "image/webp", "image/bmp"]
     if file.content_type not in allowed_content_types and not any(file.filename.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".bmp"]):
         raise HTTPException(
             status_code=400,
-            detail="Tập tin tải lên không phải là ảnh hợp lệ (.jpg, .jpeg, .png, .webp, .bmp)"
+            detail="Uploaded file is not a valid image format (.jpg, .jpeg, .png, .webp, .bmp)"
         )
 
-    # Đọc dữ liệu ảnh vào bộ nhớ
+    # Decode image in memory
     try:
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         if image is None:
-            raise ValueError("Không thể giải mã dữ liệu ảnh (cv2.imdecode trả về None).")
+            raise ValueError("Failed to decode image data.")
     except Exception as e:
-        logger.error(f"Lỗi khi đọc file ảnh: {e}")
-        raise HTTPException(status_code=400, detail=f"Không thể xử lý file ảnh tải lên: {str(e)}")
+        logger.error(f"Error reading image file: {e}")
+        raise HTTPException(status_code=400, detail=f"Cannot process uploaded image: {str(e)}")
 
     img_h, img_w = image.shape[:2]
 

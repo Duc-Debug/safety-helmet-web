@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Giám Sát Mũ Bảo Hộ & Suy Luận Luật An Toàn (AI + Rule-Based)</title>
+    <title>Safety Vision AI - Safety Helmet Detection & Rule-Based Reasoning</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -51,7 +51,7 @@
                         Safety Vision AI
                         <span class="text-xs font-semibold uppercase px-2 py-0.5 bg-blue-600 rounded text-blue-100">Rule-Based Reasoning</span>
                     </h1>
-                    <p class="text-xs text-slate-400">Giám sát mũ bảo hộ & thiết bị PPE công trường xây dựng</p>
+                    <p class="text-xs text-slate-400">Construction Site PPE & Safety Helmet Compliance Monitoring</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3 text-xs text-slate-300">
@@ -59,9 +59,9 @@
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                     YOLOv8 + Forward Chaining
                 </span>
-                <a href="/tuning" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition shadow-sm" title="Mở trang tinh chỉnh tham số riêng biệt">
+                <a href="/tuning" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition shadow-sm" title="Open Advanced Tuning Studio">
                     <i class="fa-solid fa-sliders text-xs"></i>
-                    <span>Trang Tinh Chỉnh (Tuning UI)</span>
+                    <span>Tuning Studio (Expert UI)</span>
                 </a>
             </div>
         </div>
@@ -73,103 +73,103 @@
         <!-- Top Section: 2 Columns Layout -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-            <!-- CỘT TRÁI: Bảng điều khiển (Controls & Inputs) -->
+            <!-- LEFT COLUMN: Control Panel -->
             <div class="lg:col-span-5 flex flex-col gap-5">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
                     <h2 class="text-base font-bold text-slate-900 flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
                         <i class="fa-solid fa-sliders text-blue-600"></i>
-                        Bảng điều khiển phân tích
+                        Analysis Control Panel
                     </h2>
 
-                    <!-- Khu vực Upload File & Drag-and-drop -->
+                    <!-- Image Upload & Drag-and-Drop Area -->
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Tải ảnh công trường</label>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Upload Site Image</label>
                         <div id="drop-zone" class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer transition hover:border-blue-500 hover:bg-blue-50/50 flex flex-col items-center justify-center min-h-[160px]">
                             <input type="file" id="image-input" accept="image/*" class="hidden">
                             <div id="upload-prompt" class="flex flex-col items-center">
                                 <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-2">
                                     <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
                                 </div>
-                                <p class="text-sm font-medium text-slate-700">Kéo thả ảnh hoặc <span class="text-blue-600 font-semibold underline">duyệt từ máy</span></p>
-                                <p class="text-xs text-slate-400 mt-1">Hỗ trợ JPG, PNG, WEBP (Tối đa 10MB)</p>
+                                <p class="text-sm font-medium text-slate-700">Drag & drop image or <span class="text-blue-600 font-semibold underline">browse files</span></p>
+                                <p class="text-xs text-slate-400 mt-1">Supports JPG, PNG, WEBP (Max 10MB)</p>
                             </div>
-                            <!-- Xem trước ảnh gốc -->
+                            <!-- Original Image Preview -->
                             <div id="preview-wrapper" class="hidden w-full relative">
-                                <img id="preview-img" src="" alt="Xem trước ảnh gốc" class="max-h-56 mx-auto rounded-lg object-contain border border-slate-200">
-                                <button type="button" id="remove-img-btn" class="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-md transition" title="Chọn ảnh khác">
+                                <img id="preview-img" src="" alt="Original Preview" class="max-h-56 mx-auto rounded-lg object-contain border border-slate-200">
+                                <button type="button" id="remove-img-btn" class="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-md transition" title="Choose another image">
                                     <i class="fa-solid fa-xmark"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Cấu hình chuẩn hóa AI tự động (Khóa chỉnh trên Web UI, mở qua API Docs) -->
+                    <!-- AI Auto Standardized Config Box -->
                     <div class="mb-5 bg-gradient-to-br from-slate-50 to-blue-50/50 p-4 rounded-xl border border-slate-200/90 shadow-inner">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase">
                                 <i class="fa-solid fa-microchip text-blue-600"></i>
-                                Cấu hình thị giác máy tính
+                                Computer Vision Config
                             </span>
                             <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <i class="fa-solid fa-lock text-[9px]"></i> Tự động chuẩn hóa
+                                <i class="fa-solid fa-lock text-[9px]"></i> Auto-Optimized
                             </span>
                         </div>
                         <p class="text-xs text-slate-600 leading-relaxed">
-                            Hệ thống tự động kích hoạt thuật toán <strong>NMS Anti-Duplication (IoU = 0.45)</strong> và áp dụng ngưỡng phát hiện chuẩn hóa tối ưu nhằm triệt tiêu hoàn toàn hiện tượng trùng lặp khung người.
+                            System automatically applies <strong>Dual NMS Anti-Duplication (IoU = 0.45)</strong> and optimized detection thresholds (<span class="font-mono">person: 0.35, ppe: 0.25</span>) to eliminate duplicate bounding boxes.
                         </p>
                         <div class="mt-2.5 pt-2.5 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
-                            <span>Khóa chỉnh trên trang tiêu chuẩn</span>
+                            <span>Locked on standard view</span>
                             <a href="/tuning" class="text-indigo-600 hover:text-indigo-800 font-semibold hover:underline inline-flex items-center gap-1">
-                                Mở trang tinh chỉnh <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                                Open Tuning Studio <i class="fa-solid fa-arrow-right text-[10px]"></i>
                             </a>
                         </div>
                     </div>
 
-                    <!-- Nút Kích Hoạt Phân Tích -->
+                    <!-- Analyze Trigger Button -->
                     <button id="analyze-btn" disabled class="w-full py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold text-sm shadow-md transition flex items-center justify-center gap-2">
                         <span id="btn-spinner" class="hidden">
                             <i class="fa-solid fa-circle-notch fa-spin"></i>
                         </span>
                         <i id="btn-icon" class="fa-solid fa-brain"></i>
-                        <span id="btn-text">Phân tích & Suy luận an toàn</span>
+                        <span id="btn-text">Analyze & Reason Safety Rules</span>
                     </button>
                 </div>
 
-                <!-- Thuyết minh mã luật nhanh -->
+                <!-- Rule Base Quick Reference -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 text-xs text-slate-600">
                     <h3 class="font-bold text-slate-800 uppercase mb-2 text-[11px] flex items-center gap-1.5">
                         <i class="fa-solid fa-book-bookmark text-slate-500"></i>
-                        Danh mục luật suy diễn (Rule Base)
+                        Rule Base Reference
                     </h3>
                     <ul class="space-y-1.5">
                         <li class="flex items-center justify-between">
                             <span class="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">R01</span>
-                            <span class="text-slate-600">Đầy đủ mũ & áo bảo hộ (An toàn)</span>
+                            <span class="text-slate-600">Full Compliance: Helmet + Safety Vest (Safe)</span>
                         </li>
                         <li class="flex items-center justify-between">
                             <span class="font-mono font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">R02</span>
-                            <span class="text-slate-600">Có mũ bảo hộ, thiếu áo bảo hộ</span>
+                            <span class="text-slate-600">Helmet equipped, safety vest missing</span>
                         </li>
                         <li class="flex items-center justify-between">
                             <span class="font-mono font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">R03</span>
-                            <span class="text-slate-600">Thấy người rõ đầu nhưng KHÔNG ĐỘI MŨ</span>
+                            <span class="text-slate-600">Clear head detected but NO HELMET (High Risk)</span>
                         </li>
                         <li class="flex items-center justify-between">
                             <span class="font-mono font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">R04</span>
-                            <span class="text-slate-600">Suy luận từ áo: Đầu phía trên KHÔNG MŨ</span>
+                            <span class="text-slate-600">Inferred from vest: NO HELMET (High Risk)</span>
                         </li>
                         <li class="flex items-center justify-between">
                             <span class="font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">R05</span>
-                            <span class="text-slate-600">Vùng đầu sát mép/khuất, không đủ dữ liệu</span>
+                            <span class="text-slate-600">Head occluded/clipped at border (Uncertain)</span>
                         </li>
                     </ul>
                 </div>
             </div>
 
-            <!-- CỘT PHẢI: Kết quả trực quan (Visual & Metrics) -->
+            <!-- RIGHT COLUMN: Visual Results & Metrics -->
             <div class="lg:col-span-7 flex flex-col gap-5">
 
-                <!-- 1. Banner cảnh báo tổng quát -->
+                <!-- 1. Overall Scene Alert Banner -->
                 <div id="scene-alert-banner" class="hidden rounded-xl p-4 shadow-sm border transition-all flex items-start gap-3.5">
                     <div id="banner-icon-box" class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-lg"></div>
                     <div>
@@ -178,63 +178,63 @@
                     </div>
                 </div>
 
-                <!-- 2. Thẻ KPI Thống Kê -->
+                <!-- 2. KPI Metrics Cards -->
                 <div class="grid grid-cols-3 gap-3">
                     <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-                        <span class="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Tổng công nhân</span>
+                        <span class="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">Total Workers</span>
                         <div class="flex items-baseline gap-2 mt-1">
                             <span id="metric-total-workers" class="text-2xl font-black text-slate-800">--</span>
-                            <span class="text-xs text-slate-400">người</span>
+                            <span class="text-xs text-slate-400">persons</span>
                         </div>
                     </div>
                     <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-                        <span class="text-[11px] font-medium text-emerald-600 uppercase tracking-wider block">Tuân thủ mũ bảo hộ</span>
+                        <span class="text-[11px] font-medium text-emerald-600 uppercase tracking-wider block">Helmet Compliance</span>
                         <div class="flex items-baseline gap-1 mt-1">
                             <span id="metric-helmet-rate" class="text-2xl font-black text-emerald-600">--%</span>
                         </div>
                     </div>
                     <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-                        <span class="text-[11px] font-medium text-rose-600 uppercase tracking-wider block">Tỉ lệ vi phạm</span>
+                        <span class="text-[11px] font-medium text-rose-600 uppercase tracking-wider block">Violation Rate</span>
                         <div class="flex items-baseline gap-1 mt-1">
                             <span id="metric-danger-rate" class="text-2xl font-black text-rose-600">--%</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- 3. Khung hiển thị ảnh kết quả khoanh vùng từ Server -->
+                <!-- 3. Annotated Result Image Container -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex-1 flex flex-col">
                     <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
                         <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
                             <i class="fa-solid fa-image text-blue-600"></i>
-                            Ảnh kết quả trực quan hóa (Bounding Boxes & Trạng thái)
+                            Visualized Result (Bounding Boxes & Status)
                         </h3>
-                        <span id="result-status-badge" class="text-[11px] text-slate-400 italic">Chưa có dữ liệu</span>
+                        <span id="result-status-badge" class="text-[11px] text-slate-400 italic">No data yet</span>
                     </div>
 
                     <div id="result-img-container" class="relative bg-slate-900/5 rounded-lg border border-slate-200 flex items-center justify-center min-h-[320px] overflow-hidden">
                         <div id="result-placeholder" class="text-center p-8 text-slate-400">
                             <i class="fa-regular fa-image text-5xl mb-2 text-slate-300"></i>
-                            <p class="text-sm font-medium">Tải ảnh lên và bấm nút "Phân tích" để xem kết quả khoanh vùng</p>
+                            <p class="text-sm font-medium">Upload an image and click "Analyze" to inspect detected bounding boxes</p>
                         </div>
-                        <img id="result-img" src="" alt="Ảnh phân tích kết quả" class="hidden w-full h-auto max-h-[520px] object-contain rounded-md shadow-inner">
+                        <img id="result-img" src="" alt="Analyzed Result" class="hidden w-full h-auto max-h-[520px] object-contain rounded-md shadow-inner">
                     </div>
                 </div>
 
             </div>
         </div>
 
-        <!-- Bottom Section: Bảng truy vết suy luận (Rule Trace Table) -->
+        <!-- Bottom Section: Rule Trace Table -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mt-2">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 mb-4">
                 <div>
                     <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
                         <i class="fa-solid fa-code-branch text-blue-600"></i>
-                        Bảng truy vết suy luận logic (Rule Trace & Explainability)
+                        Rule Trace & Explainability Table
                     </h2>
-                    <p class="text-xs text-slate-500">Minh bạch hóa quá trình liên kết không gian và chuỗi sự kiện dẫn đến kết luận</p>
+                    <p class="text-xs text-slate-500">Transparent geometric association and deductive fact chains leading to each conclusion</p>
                 </div>
                 <div id="evaluation-count-badge" class="hidden text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-semibold border border-slate-200">
-                    0 đối tượng
+                    0 entities
                 </div>
             </div>
 
@@ -242,18 +242,18 @@
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-50 border-y border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
-                            <th class="py-3 px-3">Đối tượng</th>
-                            <th class="py-3 px-3">Trạng thái</th>
-                            <th class="py-3 px-3">Mức rủi ro</th>
-                            <th class="py-3 px-3">Mã luật</th>
-                            <th class="py-3 px-3 min-w-[200px]">Chuỗi sự kiện (Fact Base)</th>
-                            <th class="py-3 px-3 min-w-[280px]">Giải thích lập luận (Explanation)</th>
+                            <th class="py-3 px-3">Entity</th>
+                            <th class="py-3 px-3">Status</th>
+                            <th class="py-3 px-3">Risk Level</th>
+                            <th class="py-3 px-3">Rule ID</th>
+                            <th class="py-3 px-3 min-w-[200px]">Fact Base</th>
+                            <th class="py-3 px-3 min-w-[280px]">Reasoning Explanation</th>
                         </tr>
                     </thead>
                     <tbody id="trace-table-body" class="divide-y divide-slate-100 text-slate-700">
                         <tr>
                             <td colspan="6" class="py-8 text-center text-slate-400 italic">
-                                Chưa có dữ liệu phân tích. Hãy tải ảnh lên và chạy suy luận.
+                                No analysis data. Please upload an image and run reasoning.
                             </td>
                         </tr>
                     </tbody>
@@ -265,10 +265,10 @@
 
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-400">
-        Hệ Thống Nhận Diện Mũ Bảo Hộ & Suy Luận Luật An Toàn © 2026 | Kiến trúc Hybrid AI (Computer Vision + Rule Engine)
+        Safety Helmet Detection & Rule-Based Reasoning System © 2026 | Hybrid AI (Computer Vision + Rule Engine)
     </footer>
 
-    <!-- JavaScript Xử Lý -->
+    <!-- JavaScript Processing -->
     <script>
         const dropZone = document.getElementById('drop-zone');
         const imageInput = document.getElementById('image-input');
@@ -299,7 +299,7 @@
 
         let selectedFile = null;
 
-        // Xử lý chọn ảnh & kéo thả
+        // Image Selection & Drag-and-Drop
         dropZone.addEventListener('click', () => {
             if (!selectedFile) imageInput.click();
         });
@@ -334,7 +334,7 @@
 
         function handleFileSelect(file) {
             if (!file.type.startsWith('image/')) {
-                alert('Vui lòng chọn tập tin ảnh hợp lệ (.jpg, .png, .webp).');
+                alert('Please select a valid image file (.jpg, .png, .webp).');
                 return;
             }
             selectedFile = file;
@@ -362,19 +362,17 @@
             analyzeBtn.disabled = true;
         }
 
-        // Gọi API Phân Tích
+        // Call Analysis API
         analyzeBtn.addEventListener('click', async () => {
             if (!selectedFile) return;
 
-            // Chuyển nút sang trạng thái loading
             analyzeBtn.disabled = true;
             btnSpinner.classList.remove('hidden');
             btnIcon.classList.add('hidden');
-            btnText.textContent = 'Đang nhận diện & suy luận...';
+            btnText.textContent = 'Detecting & Reasoning...';
 
             const formData = new FormData();
             formData.append('file', selectedFile);
-            // Giá trị chuẩn hóa tối ưu nhất (người dùng web không cần/không thể can thiệp sai)
             formData.append('conf_ppe', '0.25');
             formData.append('conf_person', '0.35');
             formData.append('iou_threshold', '0.45');
@@ -387,77 +385,77 @@
 
                 if (!response.ok) {
                     const errData = await response.json();
-                    throw new Error(errData.detail || 'Có lỗi xảy ra khi xử lý ảnh.');
+                    throw new Error(errData.detail || 'Error occurred while processing image.');
                 }
 
                 const data = await response.json();
                 renderResults(data);
             } catch (err) {
                 console.error(err);
-                alert('Lỗi: ' + err.message);
+                alert('Error: ' + err.message);
             } finally {
                 analyzeBtn.disabled = false;
                 btnSpinner.classList.add('hidden');
                 btnIcon.classList.remove('hidden');
-                btnText.textContent = 'Phân tích & Suy luận an toàn';
+                btnText.textContent = 'Analyze & Reason Safety Rules';
             }
         });
 
-        // Hiển thị kết quả lên giao diện
+        // Render Results to UI
         function renderResults(data) {
             const summary = data.summary;
             const evaluations = data.evaluations;
 
-            // 1. Hiển thị ảnh kết quả
+            // 1. Result Image
             resultPlaceholder.classList.add('hidden');
             resultImg.classList.remove('hidden');
             resultImg.src = data.image_base64;
-            resultStatusBadge.textContent = 'Đã phân tích thành công';
+            resultStatusBadge.textContent = 'Analysis Completed';
             resultStatusBadge.className = 'text-[11px] text-emerald-600 font-semibold';
 
-            // 2. Cập nhật thẻ KPI
+            // 2. KPI Cards
             metricTotal.textContent = summary.total_workers;
             metricHelmetRate.textContent = summary.helmet_compliance_rate.toFixed(1) + '%';
             metricDangerRate.textContent = summary.danger_rate.toFixed(1) + '%';
 
-            // 3. Cập nhật Banner cảnh báo tổng thể
+            // 3. Scene Alert Banner
             sceneBanner.classList.remove('hidden', 'bg-rose-50', 'border-rose-200', 'text-rose-900', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-900', 'bg-amber-50', 'border-amber-200', 'text-amber-900', 'bg-slate-50', 'border-slate-200', 'text-slate-800');
 
             if (summary.is_scene_dangerous) {
                 sceneBanner.classList.add('bg-rose-50', 'border-rose-300', 'text-rose-900');
                 bannerIconBox.className = 'w-9 h-9 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0 text-base shadow';
                 bannerIconBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
-                bannerTitle.textContent = `🚨 CẢNH BÁO NGUY HIỂM: CÓ ${summary.danger_no_helmet} CÔNG NHÂN KHÔNG ĐỘI MŨ BẢO HỘ!`;
-                bannerDesc.textContent = `Phát hiện vi phạm quy định an toàn lao động nghiêm trọng. Yêu cầu cán bộ an toàn kiểm tra và xử lý ngay tại công trường.`;
+                bannerTitle.textContent = `🚨 DANGER ALERT: ${summary.danger_no_helmet} WORKER(S) NOT WEARING SAFETY HELMET!`;
+                bannerDesc.textContent = `Critical workplace safety violation detected. Immediate on-site inspection and corrective action required.`;
             } else if (summary.total_workers > 0 && summary.helmet_compliance_rate === 100.0) {
                 sceneBanner.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900');
                 bannerIconBox.className = 'w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 text-base shadow';
                 bannerIconBox.innerHTML = '<i class="fa-solid fa-shield-halved"></i>';
-                bannerTitle.textContent = '✅ HIỆN TRƯỜNG AN TOÀN: 100% CÔNG NHÂN ĐỘI MŨ BẢO HỘ ĐÚNG QUY CHUẨN';
-                bannerDesc.textContent = 'Tất cả các vị trí công nhân được ghi nhận đều tuân thủ trang bị mũ bảo hộ an toàn.';
+                bannerTitle.textContent = '✅ SAFE ENVIRONMENT: 100% WORKERS COMPLIANT WITH HELMET REGULATIONS';
+                bannerDesc.textContent = 'All recorded workers are properly equipped with safety helmets.';
             } else if (summary.total_workers === 0) {
                 sceneBanner.classList.add('bg-slate-100', 'border-slate-300', 'text-slate-800');
                 bannerIconBox.className = 'w-9 h-9 rounded-full bg-slate-400 text-white flex items-center justify-center shrink-0 text-base';
                 bannerIconBox.innerHTML = '<i class="fa-solid fa-user-slash"></i>';
-                bannerTitle.textContent = 'ℹ️ KHÔNG PHÁT HIỆN CÔNG NHÂN TRONG KHUNG HÌNH';
-                bannerDesc.textContent = 'Không tìm thấy người hoặc áo phản quang đáp ứng ngưỡng tin cậy đã thiết lập.';
+                bannerTitle.textContent = 'ℹ️ NO WORKERS DETECTED IN FRAME';
+                bannerDesc.textContent = 'No person or safety vest detected matching the established confidence thresholds.';
             } else {
                 sceneBanner.classList.add('bg-amber-50', 'border-amber-300', 'text-amber-900');
                 bannerIconBox.className = 'w-9 h-9 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 text-base shadow';
                 bannerIconBox.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
-                bannerTitle.textContent = '⚠️ CHÚ Ý: CÓ VỊ TRÍ CẦN LƯU TÂM HOẶC THIẾU BẰNG CHỨNG';
-                bannerDesc.textContent = `Có ${summary.insufficient_evidence} trường hợp bị che khuất vùng đầu hoặc thiếu áo bảo hộ.`;
+                bannerTitle.textContent = '⚠️ ATTENTION: POTENTIAL ISSUES OR INSUFFICIENT EVIDENCE';
+                bannerDesc.textContent = `Identified ${summary.insufficient_evidence} instance(s) with occluded head region or missing safety vest.`;
             }
 
-            // 4. Cập nhật Bảng Rule Trace
+            // 4. Rule Trace Table
             evalCountBadge.classList.remove('hidden');
-            evalCountBadge.textContent = `${evaluations.length} đối tượng`;
+            evalCountBadge.textContent = `${evaluations.length} entities`;
 
             if (evaluations.length === 0) {
                 traceTableBody.innerHTML = `
                     <tr>
                         <td colspan="6" class="py-6 text-center text-slate-400 italic">
-                            Không phát hiện công nhân nào để lập luận đánh giá.
+                            No workers detected for deductive reasoning.
                         </td>
                     </tr>
                 `;
@@ -466,7 +464,6 @@
 
             let rowsHtml = '';
             evaluations.forEach(ev => {
-                // Style cho Status Badge
                 let statusBadge = '';
                 if (ev.status === 'COMPLIANT') {
                     statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">COMPLIANT</span>';
@@ -478,19 +475,17 @@
                     statusBadge = '<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-800 font-bold border border-slate-300">INSUFFICIENT_EVIDENCE</span>';
                 }
 
-                // Style cho Risk Level
                 let riskBadge = '';
-                if (ev.risk_level === 'AN TOÀN') {
-                    riskBadge = '<span class="text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check text-xs mr-1"></i>An toàn</span>';
-                } else if (ev.risk_level === 'CẢNH BÁO NHẸ') {
-                    riskBadge = '<span class="text-amber-700 font-semibold"><i class="fa-solid fa-triangle-exclamation text-xs mr-1"></i>Cảnh báo nhẹ</span>';
-                } else if (ev.risk_level === 'NGUY HIỂM CAO') {
-                    riskBadge = '<span class="text-rose-700 font-bold"><i class="fa-solid fa-circle-xmark text-xs mr-1"></i>Nguy hiểm cao</span>';
+                if (ev.risk_level === 'SAFE') {
+                    riskBadge = '<span class="text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check text-xs mr-1"></i>Safe</span>';
+                } else if (ev.risk_level === 'WARNING') {
+                    riskBadge = '<span class="text-amber-700 font-semibold"><i class="fa-solid fa-triangle-exclamation text-xs mr-1"></i>Warning</span>';
+                } else if (ev.risk_level === 'HIGH RISK') {
+                    riskBadge = '<span class="text-rose-700 font-bold"><i class="fa-solid fa-circle-xmark text-xs mr-1"></i>High Risk</span>';
                 } else {
-                    riskBadge = '<span class="text-slate-500 font-medium"><i class="fa-solid fa-circle-question text-xs mr-1"></i>Không đủ bằng chứng</span>';
+                    riskBadge = '<span class="text-slate-500 font-medium"><i class="fa-solid fa-circle-question text-xs mr-1"></i>Uncertain</span>';
                 }
 
-                // Facts Tags
                 const factsHtml = ev.facts.map(fact => {
                     let factColor = 'bg-slate-100 text-slate-700 border-slate-200';
                     if (fact === 'HelmetAssociated') factColor = 'bg-blue-100 text-blue-800 border-blue-200 font-semibold';

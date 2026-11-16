@@ -304,38 +304,38 @@ class SafetyRuleEngine:
                 # Rule R01
                 rule_id = "R01"
                 status = "COMPLIANT"
-                risk_level = "AN TOÀN"
-                explanation = "Tuân thủ đầy đủ: Đã đội mũ bảo hộ đúng vị trí vùng đầu và mặc áo phản quang."
+                risk_level = "SAFE"
+                explanation = "Full Compliance: Safety helmet correctly worn on head and safety vest equipped."
             elif has_helmet and not has_vest:
                 # Rule R02
                 rule_id = "R02"
                 status = "WARNING_NO_VEST"
-                risk_level = "CẢNH BÁO NHẸ"
-                explanation = "Đã đội mũ bảo hộ an toàn, nhưng thiếu áo phản quang bảo hộ."
+                risk_level = "WARNING"
+                explanation = "Safety helmet equipped, but high-visibility safety vest is missing."
             elif not has_helmet and is_clipped:
                 # Rule R05
                 rule_id = "R05"
                 status = "INSUFFICIENT_EVIDENCE"
-                risk_level = "KHÔNG ĐỦ BẰNG CHỨNG"
-                explanation = "Vùng đầu nằm sát mép trên khung hình hoặc bị che khuất, chưa đủ cơ sở kết luận vi phạm."
+                risk_level = "UNCERTAIN"
+                explanation = "Head region occluded or clipped at upper frame boundary; insufficient evidence for violation."
             elif not has_helmet and is_clear:
                 if not cand["is_inferred"]:
                     # Rule R03
                     rule_id = "R03"
                     status = "DANGER_NO_HELMET"
-                    risk_level = "NGUY HIỂM CAO"
-                    explanation = "VI PHẠM NGHIÊM TRỌNG: Phát hiện người lao động quan sát rõ vùng đầu nhưng KHÔNG ĐỘI MŨ BẢO HỘ."
+                    risk_level = "HIGH RISK"
+                    explanation = "CRITICAL VIOLATION: Worker detected with clear head region but NO SAFETY HELMET worn."
                 else:
                     # Rule R04
                     rule_id = "R04"
                     status = "DANGER_NO_HELMET"
-                    risk_level = "NGUY HIỂM CAO"
-                    explanation = "VI PHẠM NGHIÊM TRỌNG (Suy luận từ áo): Phát hiện người mặc áo bảo hộ nhưng vùng đầu phía trên KHÔNG CÓ MŨ."
+                    risk_level = "HIGH RISK"
+                    explanation = "CRITICAL VIOLATION (Inferred from vest): Worker wearing safety vest but NO HELMET detected above."
             else:
                 rule_id = "R05"
                 status = "INSUFFICIENT_EVIDENCE"
-                risk_level = "KHÔNG ĐỦ BẰNG CHỨNG"
-                explanation = "Dữ liệu vị trí không đủ điều kiện phân loại rõ ràng."
+                risk_level = "UNCERTAIN"
+                explanation = "Positional data insufficient for definitive classification."
 
             evaluations.append(WorkerEvaluation(
                 worker_id=cand["worker_id"],
